@@ -2,7 +2,7 @@ const Discord = require("discord.js");
 const config = require("./functions/config.json");
 const Func = require("./functions/all");
 const { createClient } = require("./functions/js/client");
-const { ActivityType, SlashCommandSubcommandBuilder } = require("discord.js");
+const { ActivityType } = require("discord.js");
 
 /**
  * @type {Discord.Client}

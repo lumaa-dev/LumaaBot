@@ -1,3 +1,4 @@
+const { PermissionFlagsBits } = require("discord.js");
 const Discord = require("discord.js");
 
 const { createChannel } = require("../js/channels");
@@ -104,82 +105,74 @@ module.exports = {
 		}
 	},
 
+	/**@param {Discord.ChatInputCommandInteraction} interaction */
 	async mute(interaction) {
-		if (interaction.member.permissions.has(["MUTE_MEMBERS"])) {
-			const { user } = interaction.options.get("user");
-			const member = interaction.guild.members.cache.get(user.id);
-			const reason =
-				interaction.options.get("reason")?.value ?? "*Any reasons provided*";
-			if (member.manageable !== true)
-				return interaction.reply({
-					ephemeral: true,
-					content: `You can't mute that user.`,
-				});
-			muteRole = interaction.guild.roles.cache.find(
-				(role) => role.name == "Mute"
-			);
-			createdRole = false;
-			if (!muteRole || typeof muteRole === "undefined") {
-				muteRole = await interaction.guild.roles.create({
-					name: "Mute",
-					color: "RED",
-					hoist: true,
-					mentionable: false,
-					permissions: ["CREATE_INSTANT_INVITE", "CONNECT"],
-				});
-				createdRole = true;
-			}
-			interaction.guild.channels.cache.forEach(async (_channel) => {
-				if (
-					_channel.type == "GUILD_TEXT" ||
-					_channel.type == "GUILD_NEWS" ||
-					_channel.type == "GUILD_STORE" ||
-					_channel.type == "GUILD_CATEGORY"
-				) {
-					await _channel.permissionOverwrites.create(
-						muteRole,
-						{
-							SEND_MESSAGES: false,
-							ADD_REACTIONS: false,
-							USE_PUBLIC_THREADS: false,
-							USE_PRIVATE_THREADS: false,
-						},
-						{ type: 0 }
-					);
-				} else if (
-					_channel.type == "GUILD_VOICE" ||
-					_channel.type == "GUILD_STAGE_VOICE"
-				) {
-					await _channel.permissionOverwrites.create(
-						muteRole,
-						{ SPEAK: false, STREAM: false, REQUEST_TO_SPEAK: false },
-						{ type: 0 }
-					);
-				}
-			});
-			if (member.roles.cache.has(muteRole.id) == true)
-				return interaction.reply({
-					ephemeral: true,
-					content: `<:g_no:870870938529460244> <@${member.user.id}> is already muted.`,
-				});
-			member.roles.add(muteRole);
-			const muteEmbed = new Discord.MessageEmbed()
-				.setTitle(`${member.user.username} has been muted`)
-				.setFooter(
-					`Created role: ${createdRole ? `Yes (${muteRole.id})` : `No`}`
-				)
-				.addField("User muted:", `<@${member.user.id}>`, true)
-				.addField("Muted by:", `<@${interaction.member.user.id}>`, true)
-				.addField("Role added", `<@&${muteRole.id}>`, true)
-				.addField("Reason:", reason);
-
-			interaction.reply({ embeds: [muteEmbed] });
-		} else {
-			interaction.reply({
+		const member = interaction.options.getMember("member");
+		const reason = interaction.options.get("reason")?.value ?? "*Any reasons provided*";
+		if (member.manageable() !== true)
+			return interaction.reply({
 				ephemeral: true,
-				content: `You don't have the required permissions.`,
+				content: `You can't mute that user.`,
 			});
+		muteRole = interaction.guild.roles.cache.find(
+			(role) => role.name == "Mute"
+		);
+		createdRole = false;
+		if (!muteRole || typeof muteRole === "undefined") {
+			muteRole = await interaction.guild.roles.create({
+				name: "Mute",
+				color: "RED",
+				hoist: true,
+				mentionable: false,
+				permissions: [PermissionFlagsBits.CreateInstantInvite, PermissionFlagsBits.Connect],
+			});
+			createdRole = true;
 		}
+		interaction.guild.channels.cache.forEach(async (_channel) => {
+			if (
+				_channel.type == Discord.ChannelType.GuildText ||
+				_channel.type == Discord.ChannelType.GuildAnnouncement ||
+				_channel.type == Discord.ChannelType.GuildForum ||
+				_channel.type == Discord.ChannelType.GuildCategory
+			) {
+				await _channel.permissionOverwrites.create(
+					muteRole,
+					{
+						SEND_MESSAGES: false,
+						ADD_REACTIONS: false,
+						USE_PUBLIC_THREADS: false,
+						USE_PRIVATE_THREADS: false,
+					},
+					{ type: 0 }
+				);
+			} else if (
+				_channel.type == Discord.ChannelType.GuildVoice ||
+				_channel.type == Discord.ChannelType.GuildStageVoice
+			) {
+				await _channel.permissionOverwrites.create(
+					muteRole,
+					{ SPEAK: false, STREAM: false, REQUEST_TO_SPEAK: false },
+					{ type: 0 }
+				);
+			}
+		});
+		if (member.roles.cache.has(muteRole.id) == true)
+			return interaction.reply({
+				ephemeral: true,
+				content: `<:g_no:870870938529460244> <@${member.user.id}> is already muted.`,
+			});
+		member.roles.add(muteRole);
+		const muteEmbed = new Discord.MessageEmbed()
+			.setTitle(`${member.user.username} has been muted`)
+			.setFooter(
+				`Created role: ${createdRole ? `Yes (${muteRole.id})` : `No`}`
+			)
+			.addField("User muted:", `<@${member.user.id}>`, true)
+			.addField("Muted by:", `<@${interaction.member.user.id}>`, true)
+			.addField("Role added", `<@&${muteRole.id}>`, true)
+			.addField("Reason:", reason);
+
+		interaction.reply({ embeds: [muteEmbed] });
 	},
 
 	async clearChannel(interaction) {

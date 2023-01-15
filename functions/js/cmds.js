@@ -170,4 +170,179 @@ module.exports = {
 			return splitted.join(fileSeparator);
 		}
 	},
+
+	/**
+	 * Waits for a message in a channel
+	 * @param {Discord.TextChannel} channel The channel to wait in
+	 * @param {Discord.User} user The user that will respond
+	 * @param {((message: Discord.Message) => any)} succeed The function when it will succeed
+	 * @param {((error: any) => void)} error The function when it will get an error
+	 */
+	async awaitMessage(
+		channel,
+		user,
+		succeed = (collected) => console.log(collected),
+		error = (e) => {
+			return console.error(e);
+		}
+	) {
+		const filter = (i) => i.author.id == user.id;
+
+		return await channel
+			.awaitMessages({ filter, max: 1 })
+			.then(succeed)
+			.catch(error);
+	},
+
+	/**
+	 * Waits for an interaction in a message
+	 * @param {Discord.Message} message The message with interactors
+	 * @param {Discord.User} user The user that will respond
+	 * @param {Discord.ComponentType} componentType The type of interactor (BUTTON, ACTION_ROW, SELECT_MENU)
+	 * @param {(collected: Discord.ButtonInteraction | Discord.StringSelectMenuInteraction | Discord.ChannelSelectMenuInteraction | Discord.MentionableSelectMenuInteraction | Discord.RoleSelectMenuInteraction | Discord.UserSelectMenuInteraction) => any} succeed The function when it will succeed
+	 * @param {(error: any) => void} error The function when it will get an error
+	 */
+	async awaitInteraction(
+		message,
+		user,
+		componentType = Discord.ComponentType.Button,
+		succeed = (collected) => console.log(collected),
+		error = (e) => {
+			return console.error(e);
+		}
+	) {
+		const filter = (i) => i.user.id == user.id;
+		return await message
+			.awaitMessageComponent({
+				componentType: componentType,
+				filter,
+				max: 1,
+			})
+			.then(succeed)
+			.catch(error);
+	},
+
+	/**
+	 * Waits for an modal in a interaction
+	 * @param {Discord.Interaction} interaction The interaction
+	 * @param {Discord.User} user The user that will respond
+	 * @param {Function} succeed The function when it will succeed
+	 * @param {Function} error The function when it will get an error
+	 */
+	async awaitModal(
+		interaction,
+		user,
+		succeed = (collected) => console.log(collected),
+		error = (e) => {
+			return console.error(e);
+		}
+	) {
+		const filter = (i) => i.user.id == user.id;
+		return await interaction
+			.awaitModalSubmit({ filter, max: 1, time: 86400 }) // 86400 = 24h
+			.then(succeed)
+			.catch(error);
+	},
+
+	/**
+	 * It takes an array of file names, and returns an array of only the file names that end with ".js"
+	 * @param {Array<String>} files - An array of file names.
+	 * @param {Boolean} removeJs - Removes the ".js" at the end of the file name.
+	 * @returns {Array<String>} An array of file names with .js at the end.
+	 */
+	onlyJs(files, removeJs = false) {
+		var output = [];
+		files.forEach((file) => {
+			if (file.endsWith(".js")) {
+				output.push(removeJs ? file.replace(".js", "") : file);
+			} else {
+				console.log(file + " isn't .js");
+			}
+		});
+
+		return output;
+	},
+
+	/**
+	 * It returns an array of all the commands in the commands folder.
+	 * @param {Object} options - An object to change the result
+	 * @returns {Array<String|Object>} An array of all the commands in the commands folder.
+	 *
+	 * @example const commandNames = await allCmds(options = { hasDev: true, names: true, files: false, data: false, customData: false }) // Returns an array of the name of all the commands
+	 */
+	async allCmds(
+		options = {
+			hasDev: false,
+			names: false,
+			files: false,
+			data: false,
+			customData: false,
+		}
+	) {
+		const fileSep = __dirname.includes("/") ? "/" : "\\";
+		const filePath = __dirname.split(/\/|\\/g).slice(0, -2).join(fileSep);
+		const files = await fs.readdirSync(filePath + "/commands");
+		const cmds = this.onlyJs(files, true);
+
+		if (options.names) return cmds;
+		if (options.data) {
+			var cmdsArray = [];
+			cmds.forEach((cmd) => {
+				const file = require("../../commands/" + cmd);
+				if (
+					(hasDev === true && file.customData.dev === true) ||
+					file.customData.dev !== true
+				)
+					cmdsArray.push(file.data);
+			});
+			return cmdsArray;
+		}
+		if (options.files) {
+			var cmdsArray = [];
+			cmds.forEach((cmd) => {
+				const file = require("../../commands/" + cmd);
+				if (
+					(hasDev === true && file.customData.dev === true) ||
+					file.customData.dev !== true
+				)
+					cmdsArray.push(file);
+			});
+			return cmdsArray;
+		}
+		if (options.customData) {
+			var cmdsArray = [];
+			cmds.forEach((cmd) => {
+				const file = require("../../commands/" + cmd);
+				if (
+					(hasDev === true && file.customData.dev === true) ||
+					file.customData.dev !== true
+				)
+					cmdsArray.push(file.customData);
+			});
+			return cmdsArray;
+		}
+		throw new Error("No options set in allCmds");
+	},
+
+	/**
+	 * It disables a button in a message
+	 * @param {Discord.ButtonInteraction} interaction - The interaction object.
+	 */
+	async toggleButton(interaction) {
+		let { message, customId: name } = interaction;
+
+		message.components.forEach(
+			(/**@type {import("discord.js").ActionRowBuilder}*/ actionrows) => {
+				actionrows.components.forEach((component) => {
+					if (component.data.custom_id === name) {
+						component.data.disabled = true;
+					}
+				});
+			}
+		);
+
+		await message.edit({
+			components: message.components,
+		});
+	},
 };
