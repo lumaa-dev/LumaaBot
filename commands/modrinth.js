@@ -56,17 +56,11 @@ module.exports = {
 			.setURL(`https://modrinth.com/mod/${id}`)
 			.setLabel("Open in Modrinth"),
 
-			// versions tab
-			new ButtonBuilder()
-			.setStyle(ButtonStyle.Link)
-			.setURL(`https://modrinth.com/mod/${id}/versions`)
-			.setLabel("Versions"),
-
 			// author page
 			new ButtonBuilder()
 			.setStyle(ButtonStyle.Link)
 			.setURL(`https://modrinth.com/user/${owner.user.username}?type=mod`)
-			.setLabel(`View ${owner.user?.name ?? owner.user.username}'s mods`)
+			.setLabel(`More mods by ${owner.user?.name ?? owner.user.username}`)
 		)
 
 		await interaction.editReply({ embeds: [modEmbed], components: [modBtns] })
