@@ -1,3 +1,8 @@
 /node_modules
 /start.bat
 /functions/config.json
+
+package-lock.json
+
+*.disabled
+*.froze
