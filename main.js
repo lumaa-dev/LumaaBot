@@ -1,8 +1,10 @@
 const Discord = require("discord.js");
+const { default: axios } = require("axios");
 const config = require("./functions/config.json");
 const Func = require("./functions/all");
 const { createClient } = require("./functions/js/client");
 const { ActivityType } = require("discord.js");
+const { setClient } = require("./functions/js/other");
 
 /**
  * @type {Discord.Client}
@@ -12,6 +14,8 @@ const client = createClient();
 client.once(Discord.Events.ClientReady, async () => {
 	await Func.Commands.initiate(client)
 	await client.user.setActivity({ name: "Project: Lumaa", type: ActivityType.Watching });
+	client.ghCalls = await remainingCalls();
+	setClient(client);
 	console.log(`${client.user.tag} is logged`);
 });
 
@@ -32,44 +36,24 @@ client.on(Discord.Events.InteractionCreate, async (interaction) => {
 		} catch (e) {
 			console.error(e)
 		}
-	} else if (interaction.isModalSubmit()) {
-		let { customId: id } = interaction
-
-		try {
-			if (id.startsWith("issue")) {
-				/**@type {Discord.TextChannel} */
-				var channel = interaction.guild.channels.cache.get("1058536908151595118");
-				var color = Discord.Colors.Blurple;
-				const type = id.split("_", 1)[1];
-
-				console.log(channel);
-				if (type === "mod") {
-					channel = channel.threads.cache.get("1061673209809879050");
-					color = Discord.Colors.Red;
-				} else if (type === "bot") {
-					channel = channel.threads.cache.get("1061673209809879050");
-					color = Discord.Colors.Orange;
-				} else if (type === "temp") {
-					channel = channel.threads.cache.get("1061676441705644122");
-					color = Discord.Colors.Green;
-				} else {
-					channel = channel.threads.cache.get("1061676126872809502");
-					color = Discord.Colors.DarkButNotBlack;
-				}
-
-				let embed = new Discord.EmbedBuilder()
-				.setTitle(interaction.fields.getTextInputValue("body"))
-				.setColor(color)
-				.setDescription(interaction.fields.getTextInputValue("text"))
-
-				console.log(channel)
-				await interaction.reply({ content: `Look! We pinged you in <#${channel.id}> to get the issue resolved.`, ephemeral: true })
-				await channel.send({ content: `<@${interaction.user.id}>`, embeds: [embed] })
-			}
-		} catch (e) {
-			console.error(e)
-		}
 	}
 });
 
 client.login(config.token);
+
+/**
+ * Axios's `get` function but for GitHub
+ * @param {String} api 
+ * @returns {Promise<import("axios").AxiosResponse<any, any>>}
+ */
+ async function githubApi(api) {
+	let x = await (await axios.get(api, {headers: { "Authorization": `Bearer ${require("./functions/config.json").gh_token}`}}));
+    console.log(x);
+    return x;
+}
+
+async function remainingCalls() {
+    let result = await githubApi("https://api.github.com/users/lumaa-dev"); // random api call
+    return Number(result.headers.toJSON()["x-ratelimit-remaining"])
+    // if (result.data.response)
+}

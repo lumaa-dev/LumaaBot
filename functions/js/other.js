@@ -1,8 +1,9 @@
 const Discord = require("discord.js");
-// cont { joinVoiceChannel, createAudioPlayer } = require("@discordjs/voice");
-// const ytSearch = require("yt-search");s
 const config = require("../config.json");
 const { randomColor } = require("./embeds");
+
+// This will be the Discord.Client object before full boot
+var clientObject = null;
 
 module.exports = {
 	regexs() {
@@ -236,4 +237,21 @@ module.exports = {
 			//console.log("no urls detected")
 		}
 	},
+
+	setClient(client) {
+		clientObject = client;
+	},
+	
+	/**
+	 * @returns {Discord.Client} Discord Client that was set
+	 * @throws {TypeError} If no clients were first set
+	 */
+	getClient() {
+		if (clientObject != null) return clientObject;
+		else throw TypeError("Cannot get 'null' as client")
+	},
+
+	addGhCall(amount = 1) {
+		clientObject.ghCalls = clientObject.ghCalls + amount;
+	}
 };
