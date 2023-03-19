@@ -5,7 +5,7 @@
 
 </div></center>
 
-# Description
+## Description
 This private JavaScript Discord bot is used in my [Support Discord Server](https://discord.gg/Rqpn3C7yR5)  
 [![Discord](https://img.shields.io/discord/1033451342984908900?label=Join%20now&logo=discord&style=social)](https://discord.gg/Rqpn3C7yR5)
 
