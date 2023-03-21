@@ -1,5 +1,6 @@
 const { SlashCommandBuilder, ChatInputCommandInteraction, AutocompleteInteraction, EmbedBuilder, ButtonBuilder, ButtonStyle, ActionRowBuilder } = require("discord.js")
 const { default: axios } = require("axios");
+const { setFirstCap } = require("../functions/js/other");
 
 module.exports = {
 	data: new SlashCommandBuilder()
@@ -20,7 +21,22 @@ module.exports = {
 			.setRequired(true)
 			.setMaxLength(100)
 		)
-	),
+	)
+	.addSubcommand(group => group
+		.setName("creator") // en
+		.setNameLocalization("fr", "createur") // fr
+		.setDescription("Get data about a creator") // en
+		.setDescriptionLocalization("fr", "Obtenez des données sur un créateur") // fr
+		.addStringOption(str => str
+			.setName("name") // en
+			.setNameLocalization("fr", "nom") // fr
+			.setDescription("Name or ID of the creator") // en
+			.setDescriptionLocalization("fr", "Nom ou identifiant du créateur") // fr
+			.setMaxLength(39)
+			.setRequired(true)
+		)
+	), 
+		
 	/**
 	 * Modrinth Command
 	 * @param {ChatInputCommandInteraction} interaction 
@@ -28,42 +44,67 @@ module.exports = {
 	async execute(interaction) {
 		await interaction.deferReply();
 
-		const id = interaction.options.getString("mod");
-		const result = await get(`https://api.modrinth.com/v2/project/${id}`)
+        //let subgroup = interaction.options.getSubcommandGroup(); - no uses of subgroups 
+        let sub = interaction.options.getSubcommand();
 		
-		var owner = await get(`https://api.modrinth.com/v2/project/${id}/members`); 
-		owner = owner.filter(member => member.role.toLowerCase() == "owner")[0];
+		if (sub == "project") {
+			const id = interaction.options.getString("mod");
+			const result = await (await get(`https://api.modrinth.com/v2/project/${id}`)).data
+			
+			var owner = await (await get(`https://api.modrinth.com/v2/project/${id}/members`)).data; 
+			owner = owner.filter(member => member.role.toLowerCase() == "owner")[0];
 
-		const modEmbed = new EmbedBuilder()
-		.setTitle(result.title)
-		.setDescription(result.description)
-		.setAuthor({ name: owner.user?.name ?? owner.user.username, iconURL: owner.user.avatar_url, url: `https://modrinth.com/user/${owner.user.username}`})
-		.setURL(`https://modrinth.com/mod/${id}`)
-		.setColor("1bd96a")
-		.setThumbnail(result.icon_url)
-		.setFields({ name: "Downloads", value: `${result.downloads}`, inline: true }, { name: "Followers", value: `${result.followers}`, inline: true })
-
-		if (result.gallery.length > 0) {
-			let featured = result.gallery.filter(img => img.featured == true)[0];
-			if (featured) modEmbed.setImage(featured.url)
-		}
-
-		const modBtns = new ActionRowBuilder()
-		.setComponents(
-			// description tab
-			new ButtonBuilder()
-			.setStyle(ButtonStyle.Link)
+			const modEmbed = new EmbedBuilder()
+			.setTitle(result.title)
+			.setDescription(result.description)
+			.setAuthor({ name: owner.user?.name ?? owner.user.username, iconURL: owner.user.avatar_url, url: `https://modrinth.com/user/${owner.user.username}`})
 			.setURL(`https://modrinth.com/mod/${id}`)
-			.setLabel("Open in Modrinth"),
+			.setColor("1bd96a")
+			.setThumbnail(result.icon_url)
+			.setFields({ name: "Downloads", value: `${result.downloads}`, inline: true }, { name: "Followers", value: `${result.followers}`, inline: true })
 
-			// author page
-			new ButtonBuilder()
-			.setStyle(ButtonStyle.Link)
-			.setURL(`https://modrinth.com/user/${owner.user.username}?type=mod`)
-			.setLabel(`More mods by ${owner.user?.name ?? owner.user.username}`)
-		)
+			if (result.gallery.length > 0) {
+				let featured = result.gallery.filter(img => img.featured == true)[0];
+				if (featured) modEmbed.setImage(featured.url)
+			}
 
-		await interaction.editReply({ embeds: [modEmbed], components: [modBtns] })
+			const modBtns = new ActionRowBuilder()
+			.setComponents(
+				// description tab
+				new ButtonBuilder()
+				.setStyle(ButtonStyle.Link)
+				.setURL(`https://modrinth.com/mod/${id}`)
+				.setLabel("Open in Modrinth"),
+
+				// author mods page
+				new ButtonBuilder()
+				.setStyle(ButtonStyle.Link)
+				.setURL(`https://modrinth.com/user/${owner.user.username}/mods`)
+				.setLabel(`${owner.user?.name ?? owner.user?.username}'s mods`)
+			)
+
+			await interaction.editReply({ embeds: [modEmbed], components: [modBtns] })
+		} else if (sub == "creator") {
+			const name = interaction.options.getString("name");
+			const result = await (await get(`https://api.modrinth.com/v2/user/${name}`)).data;
+			const userProjects = await (await get(`https://api.modrinth.com/v2/user/${name}/projects`)).data;
+			var downloads = 0;
+			var followers = 0;
+
+			userProjects.forEach((project) => { downloads = downloads + project.downloads; followers = followers + project.followers});
+
+			let embed = new EmbedBuilder()
+			.setTitle(result.name ?? result.username)
+			.setDescription(result.bio)
+			.setURL(`https://modrinth.com/user/${result.username}`)
+			.setColor("1bd96a")
+			.setThumbnail(result.avatar_url)
+			.setFields({ name: "Downloads", value: downloads.toString(), inline: true }, { name: "Followers", value: followers.toString(), inline: true }, { name: "Role", value: setFirstCap(result.role), inline: true })
+		
+			interaction.editReply({
+				embeds: [embed]
+			})
+		}
 	},
 	/**
 	 * Modrinth Autcomplete
@@ -73,7 +114,7 @@ module.exports = {
 		const focusedOption = interaction.options.getFocused(true);
 		if (focusedOption.name == "mod") {
 			/**@type {Object[]} */
-			var results = await (await get(`https://api.modrinth.com/v2/search?limit=25&query=${focusedOption.value.toLowerCase()}`)).hits;
+			var results = await (await get(`https://api.modrinth.com/v2/search?limit=25&query=${focusedOption.value.toLowerCase()}`)).data.hits;
 			results.filter(search => search.project_type === "mod")
 		}
 
@@ -84,10 +125,15 @@ module.exports = {
 };
 
 /**
- * Axios's `get` function but better
+ * Axios's `get` function but better with an Authentication
  * @param {String} api 
- * @returns {any}
+ * @returns {Promise<import("axios").AxiosResponse<any, any>>}
  */
 async function get(api) {
-	return await (await axios.get(api)).data;
+	// modrinth and github uses github tokens as authenticators
+	try {
+		return await (await axios.get(api, {headers: { "Authorization": `Bearer ${require("../functions/config.json").gh_token}`}}));
+	} catch(e) {
+		console.error(e);
+	}
 }
