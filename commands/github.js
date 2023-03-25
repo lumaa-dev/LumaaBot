@@ -130,8 +130,7 @@ module.exports = {
             .setDescription(`📍 ${result.location ?? "*Not defined by the user*"}
             🔗 ${result.blog.length > 1 ? result.blog : "*Not defined by the user*"}
             🐦 [@${result.twitter_username ?? "not_defined_by_the_user"}](https://twitter.com/${result.twitter_username ?? ""})
-            ✉️ [${result.mail ?? "notdefinedby@user"}](mailto:${result.email ?? ""})
-            `) // mailto: doesn't work on Discord
+            ✉️ [${result.mail ?? "notdefinedby@user"}](mailto:${result.email ?? ""})`) // mailto: doesn't work on Discord
             .setColor("Blue")
 
             if (result.blog == "" && result.twitter_username == null && result.mail == null && result.location == null) {
